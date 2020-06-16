@@ -14,6 +14,7 @@
 		F42D464724985305005E66FE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F42D464624985305005E66FE /* Assets.xcassets */; };
 		F42D464A24985305005E66FE /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F42D464824985305005E66FE /* LaunchScreen.storyboard */; };
 		F42D465324989A04005E66FE /* genesis.txn in Resources */ = {isa = PBXBuildFile; fileRef = F42D465224989A04005E66FE /* genesis.txn */; };
+		F42D465524989AC9005E66FE /* VcxWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42D465424989AC9005E66FE /* VcxWrapper.swift */; };
 		FB414B4037FBFFAAE95F447F /* Pods_VcxDemo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5EF8020559A9241CB465FEB5 /* Pods_VcxDemo.framework */; };
 /* End PBXBuildFile section */
 
@@ -31,6 +32,7 @@
 		F42D464B24985305005E66FE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F42D465124985AC9005E66FE /* VcxDemo-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "VcxDemo-Bridging-Header.h"; sourceTree = "<group>"; };
 		F42D465224989A04005E66FE /* genesis.txn */ = {isa = PBXFileReference; lastKnownFileType = text; path = genesis.txn; sourceTree = "<group>"; };
+		F42D465424989AC9005E66FE /* VcxWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VcxWrapper.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -92,6 +94,7 @@
 				F42D464B24985305005E66FE /* Info.plist */,
 				F42D465124985AC9005E66FE /* VcxDemo-Bridging-Header.h */,
 				F42D465224989A04005E66FE /* genesis.txn */,
+				F42D465424989AC9005E66FE /* VcxWrapper.swift */,
 			);
 			path = VcxDemo;
 			sourceTree = "<group>";
@@ -213,6 +216,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F42D464224985303005E66FE /* ViewController.swift in Sources */,
+				F42D465524989AC9005E66FE /* VcxWrapper.swift in Sources */,
 				F42D463E24985303005E66FE /* AppDelegate.swift in Sources */,
 				F42D464024985303005E66FE /* SceneDelegate.swift in Sources */,
 			);
