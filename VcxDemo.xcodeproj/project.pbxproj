@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 50;
+	objectVersion = 51;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -28,6 +28,7 @@
 		F42D464624985305005E66FE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F42D464924985305005E66FE /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		F42D464B24985305005E66FE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F42D465124985AC9005E66FE /* VcxDemo-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "VcxDemo-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,7 +49,6 @@
 				52AFC604A416C98B04038AAA /* Pods-VcxDemo.debug.xcconfig */,
 				BDDEA881FB79F9A32662847E /* Pods-VcxDemo.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -88,6 +88,7 @@
 				F42D464624985305005E66FE /* Assets.xcassets */,
 				F42D464824985305005E66FE /* LaunchScreen.storyboard */,
 				F42D464B24985305005E66FE /* Info.plist */,
+				F42D465124985AC9005E66FE /* VcxDemo-Bridging-Header.h */,
 			);
 			path = VcxDemo;
 			sourceTree = "<group>";
