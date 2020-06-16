@@ -38,8 +38,10 @@ class ViewController: UIViewController {
 
         let genesisFilePath = Bundle.main.path(forResource: "genesis", ofType: "txn")
 
+        //Provision an agent and wallet, get back configuration details
         self.cancellable = vcx.agentProvisionAsync(config: provisionConfig)
             .map { config in
+                //Set some additional configuration options specific to alice
                 var jsonConfigStr = ""
 
                 do {
@@ -63,6 +65,7 @@ class ViewController: UIViewController {
 
                 return jsonConfigStr
             }.flatMap({ config in
+                //Initialize libvcx with a new configuration
                 vcx.initWithConfig(config: config)
             })
             .sink(receiveCompletion: { completion in
@@ -74,10 +77,13 @@ class ViewController: UIViewController {
     }
     
     @IBAction func btnConnectionRequest(_ sender: UIButton) {
+        //Get invitation details from the text box
         let invitation = self.txtInvitation.text!
+        
         let vcx = VcxWrapper()
         var connectionHandle = Int()
         
+        //Create a connection to faber
         self.cancellable = vcx.connectionCreateWithInvite(invitationId: "1", inviteDetails: invitation)
             .map { handle in
                 connectionHandle = handle
@@ -95,6 +101,7 @@ class ViewController: UIViewController {
                 vcx.connectionSerialize(connectionHandle: connectionHandle)
             })
             .map { value in
+                //Serialize the connection to use in requesting a credential and to present a proof
                 self.serializedConnection = value
                 _ = vcx.connectionRelease(connectionHandle: connectionHandle)
             }
@@ -111,16 +118,19 @@ class ViewController: UIViewController {
         var connectionHandle = Int()
         var credentialHandle = Int()
         
+        //Deserialize a saved connection
         self.cancellable = vcx.connectionDeserialize(serializedConnection: self.serializedConnection!)
             .map { handle in
                 connectionHandle = handle
             }
             .flatMap({ _ in
+                //Check agency for a credential offers
                 vcx.credentialGetOffers(connectionHandle: connectionHandle)
             })
             .map { offers in
                 print("Offers: ", offers)
-
+                
+                //Extranct an offers from string offers
                 var jsonOfferStr = ""
 
                 do {
@@ -139,21 +149,26 @@ class ViewController: UIViewController {
                 return jsonOfferStr
             }
             .flatMap({ jsonOfferStr in
+                //Create a credential object from the credential offer
                 vcx.credentialCreateWithOffer(sourceId: "1", credentialOffer: jsonOfferStr)
             })
             .map { handle in
                 credentialHandle = handle
             }
             .flatMap({ _ in
+                //Send a credential request
                 vcx.credentialSendRequest(credentialHandle: credentialHandle, connectionHandle: connectionHandle, paymentHandle: 0)
             })
             .map { _ in
+                //Wait for a while until faber sends a credential
                 sleep(4)
             }
             .flatMap({ _ in
+                //Accept credential offer from faber
                 vcx.credentialUpdateState(credentialHandle: credentialHandle)
             })
             .map { _ in
+                //Release vcx objects from memory
                 _ = vcx.connectionRelease(connectionHandle: connectionHandle)
                 _ = vcx.credentialRelease(credentialHandle: credentialHandle)
             }
@@ -170,16 +185,19 @@ class ViewController: UIViewController {
         var connectionHandle = Int()
         var proofHandle = Int()
         
+        //Deserialize a saved connection
         self.cancellable = vcx.connectionDeserialize(serializedConnection: self.serializedConnection!)
         .map { handle in
             connectionHandle = handle
         }
         .flatMap({ _ in
+            //Check agency for a proof request
             vcx.proofGetRequests(connectionHandle: connectionHandle)
         })
         .map { requests in
             var jsonRequestStr = ""
 
+            //Extranct a request from string requests
             do {
                 let jsonRequestsArray = try JSONSerialization.jsonObject(with: Data(requests.utf8), options: []) as? [Any]
 
@@ -196,17 +214,20 @@ class ViewController: UIViewController {
             return jsonRequestStr
         }
         .flatMap({ jsonRequestStr in
+            //Create a Disclosed proof object from proof request
             vcx.proofCreateWithRequest(sourceId: "1", proofRequest: jsonRequestStr)
         })
         .map { handle in
             proofHandle = handle
         }
         .flatMap({ _ in
+            //Query for credentials in the wallet that satisfy the proof request
             vcx.proofRetrieveCredentials(proofHandle: proofHandle)
         })
         .map { matchingCredentials in
             print("Credential: ", matchingCredentials)
             
+            //Use the first available credentials to satisfy the proof request
             var selectedCredentials = ""
             
             do {
@@ -232,18 +253,23 @@ class ViewController: UIViewController {
             return selectedCredentials
         }
         .flatMap({ selectedCredentials in
+            //Generate the proof
             vcx.proofGenerate(proofHandle: proofHandle, selectedCredentials: selectedCredentials, selfAttestedAttrs: "{}")
         })
         .flatMap({ _ in
+            //Send the proof
             vcx.proofSend(proofHandle: proofHandle, connectionHandle: connectionHandle)
         })
         .map { _ in
+            //Wait for a while until faber validate a proof and send an ack
             sleep(4)
         }
         .flatMap({ _ in
+            //Get an ack from faber and finalize the proof process
             vcx.proofUpdateState(proofHandle: proofHandle)
         })
         .map { _ in
+            //Release vcx objects from memory
             _ = vcx.connectionRelease(connectionHandle: connectionHandle)
             _ = vcx.proofRelease(proofHandle: proofHandle)
         }
