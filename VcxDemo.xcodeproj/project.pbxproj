@@ -13,6 +13,7 @@
 		F42D464524985303005E66FE /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F42D464324985303005E66FE /* Main.storyboard */; };
 		F42D464724985305005E66FE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F42D464624985305005E66FE /* Assets.xcassets */; };
 		F42D464A24985305005E66FE /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F42D464824985305005E66FE /* LaunchScreen.storyboard */; };
+		F42D465324989A04005E66FE /* genesis.txn in Resources */ = {isa = PBXBuildFile; fileRef = F42D465224989A04005E66FE /* genesis.txn */; };
 		FB414B4037FBFFAAE95F447F /* Pods_VcxDemo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5EF8020559A9241CB465FEB5 /* Pods_VcxDemo.framework */; };
 /* End PBXBuildFile section */
 
@@ -29,6 +30,7 @@
 		F42D464924985305005E66FE /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		F42D464B24985305005E66FE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F42D465124985AC9005E66FE /* VcxDemo-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "VcxDemo-Bridging-Header.h"; sourceTree = "<group>"; };
+		F42D465224989A04005E66FE /* genesis.txn */ = {isa = PBXFileReference; lastKnownFileType = text; path = genesis.txn; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -89,6 +91,7 @@
 				F42D464824985305005E66FE /* LaunchScreen.storyboard */,
 				F42D464B24985305005E66FE /* Info.plist */,
 				F42D465124985AC9005E66FE /* VcxDemo-Bridging-Header.h */,
+				F42D465224989A04005E66FE /* genesis.txn */,
 			);
 			path = VcxDemo;
 			sourceTree = "<group>";
@@ -154,6 +157,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F42D464A24985305005E66FE /* LaunchScreen.storyboard in Resources */,
+				F42D465324989A04005E66FE /* genesis.txn in Resources */,
 				F42D464724985305005E66FE /* Assets.xcassets in Resources */,
 				F42D464524985303005E66FE /* Main.storyboard in Resources */,
 			);
