@@ -37,6 +37,14 @@ class VcxWrapper {
         }
     }
     
+    func updateWebhookUrl(webhookUrl: String) -> Int {
+        return Int(ConnectMeVcx().updateWebhookUrl(webhookUrl))
+    }
+    
+    func errorCMessage(errorCode: Int) -> String {
+        return ConnectMeVcx().errorCMessage(errorCode)
+    }
+    
     func connectionCreateWithInvite(invitationId: String, inviteDetails: String) -> Future<Int, Error> {
         return Future { promise in
             ConnectMeVcx().connectionCreate(withInvite: invitationId, inviteDetails: inviteDetails) { error, connectionHandle in
@@ -84,6 +92,32 @@ class VcxWrapper {
                 } else {
                     print("connectionGetState was successful!")
                     promise(.success(state))
+                }
+            }
+        }
+    }
+    
+    func connectionGetPwDid(connectionHandle: Int) -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().connectionGetPwDid(connectionHandle) { error, pwDid in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("connectionGetPwDid was successful!")
+                    promise(.success(pwDid!))
+                }
+            }
+        }
+    }
+    
+    func connectionGetTheirPwDid(connectionHandle: Int) -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().connectionGetTheirPwDid(connectionHandle) { error, theirPwDid in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("connectionGetTheirPwDid was successful!")
+                    promise(.success(theirPwDid!))
                 }
             }
         }
@@ -294,7 +328,7 @@ class VcxWrapper {
     
     func proofGetState(proofHandle: Int) -> Future<Int, Error> {
         return Future { promise in
-            ConnectMeVcx().credentialGetState(proofHandle) { error, state in
+            ConnectMeVcx().proofGetState(proofHandle) { error, state in
                 if error != nil && (error as NSError?)?.code != 0 {
                     promise(.failure(error!))
                 } else {
@@ -307,11 +341,11 @@ class VcxWrapper {
     
     func proofSerialize(proofHandle: Int) -> Future<String, Error> {
         return Future { promise in
-            ConnectMeVcx().credentialSerialize(proofHandle) { error, serializedProof in
+            ConnectMeVcx().proofSerialize(vcx_proof_handle_t(proofHandle)) { error, serializedProof in
                 if error != nil && (error as NSError?)?.code != 0 {
                     promise(.failure(error!))
                 } else {
-                    print("credentialSerialize was successful!")
+                    print("proofSerialize was successful!")
                     promise(.success(serializedProof!))
                 }
             }
@@ -324,7 +358,7 @@ class VcxWrapper {
                 if error != nil && (error as NSError?)?.code != 0 {
                     promise(.failure(error!))
                 } else {
-                    print("credentialDeserialize was successful!")
+                    print("proofDeserialize was successful!")
                     promise(.success(Int(proofHandle)))
                 }
             }
@@ -333,6 +367,58 @@ class VcxWrapper {
     
     func proofRelease(proofHandle: Int) -> Int {
         return Int(ConnectMeVcx().proofRelease(proofHandle))
+    }
+    
+    func addRecordWallet(recordType: String, recordId: String, recordValue: String) -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().addRecordWallet(recordType, recordId: recordId, recordValue: recordValue) { error in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("addRecordWallet was successful!")
+                    promise(.success(""))
+                }
+            }
+        }
+    }
+    
+    func getRecordWallet(recordType: String, recordId: String) -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().getRecordWallet(recordType, recordId: recordId) { error, walletValue in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("getRecordWallet was successful!")
+                    promise(.success(walletValue!))
+                }
+            }
+        }
+    }
+    
+    func updateRecordWallet(recordType: String, recordId: String, recordValue: String) -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().updateRecordWallet(recordType, withRecordId: recordId, withRecordValue: recordValue) { error in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("updateRecordWallet was successful!")
+                    promise(.success(""))
+                }
+            }
+        }
+    }
+    
+    func downloadMessages(messageStatues: String, uids: String?, pwdids: String?) -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().downloadMessages(messageStatues, uid_s: uids, pwdids: pwdids) { error, messages in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("downloadMessages was successful!")
+                    promise(.success(messages!))
+                }
+            }
+        }
     }
 
 }

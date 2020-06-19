@@ -8,10 +8,10 @@
 
 import UIKit
 import Combine
+import SwiftyJSON
 
 class ViewController: UIViewController {
     var cancellable: AnyCancellable?
-    var serializedConnection: String?
 
     @IBOutlet var txtInvitation: UITextField!
     
@@ -43,67 +43,123 @@ class ViewController: UIViewController {
             .map { config in
                 //Set some additional configuration options specific to alice
                 var jsonConfigStr = ""
-
-                do {
-                    var jsonConfigDic = try JSONDecoder().decode(Dictionary<String, String>.self, from: Data(config.utf8))
-
-                    jsonConfigDic["institution_name"] = "alice_institute"
-                    jsonConfigDic["institution_logo_url"] = "http://robohash.org/234"
-                    jsonConfigDic["genesis_path"] = genesisFilePath
-
-                    let jsonEncoder = JSONEncoder()
-                    jsonEncoder.outputFormatting = .withoutEscapingSlashes
-
-                    let jsonConfigData = try jsonEncoder.encode(jsonConfigDic)
-                    jsonConfigStr = String(decoding: jsonConfigData, as: UTF8.self)
-
-                    print("Updated json: ", jsonConfigStr)
-
-                } catch {
-                    print(error.localizedDescription)
-                }
-
+                
+                var jsonConfig = try! JSON(data: config.data(using: .utf8)!)
+                
+                jsonConfig["institution_name"].string = "alice_institute"
+                jsonConfig["institution_logo_url"].string = "http://robohash.org/234"
+                jsonConfig["genesis_path"].string = genesisFilePath
+                
+                jsonConfigStr = jsonConfig.rawString()!
+                print("Updated json: ", jsonConfigStr)
+                
                 return jsonConfigStr
-            }.flatMap({ config in
+            }
+            .flatMap({ config in
                 //Initialize libvcx with a new configuration
                 vcx.initWithConfig(config: config)
             })
             .sink(receiveCompletion: { completion in
                 switch completion {
-                case .finished: break
-                case .failure(let error): fatalError(error.localizedDescription)
+                    case .finished: break
+                    case .failure(let error): fatalError(error.localizedDescription)
                 }
             }, receiveValue: { _ in })
     }
-    
+
     @IBAction func btnConnectionRequest(_ sender: UIButton) {
         //Get invitation details from the text box
         let invitation = self.txtInvitation.text!
         
         let vcx = VcxWrapper()
         var connectionHandle = Int()
+        var serializedConnection = ""
         
         //Create a connection to faber
         self.cancellable = vcx.connectionCreateWithInvite(invitationId: "1", inviteDetails: invitation)
             .map { handle in
                 connectionHandle = handle
             }
-            .flatMap({ _ in
+            .flatMap({
                 vcx.connectionConnect(connectionHandle: connectionHandle, connectionType: "{\"use_public_did\":true}")
-            })
-            .map { _ in
-                sleep(4)
-            }
-            .flatMap({ _ in
-                vcx.connectionUpdateState(connectionHandle: connectionHandle)
             })
             .flatMap({ _ in
                 vcx.connectionSerialize(connectionHandle: connectionHandle)
             })
-            .map { value in
-                //Serialize the connection to use in requesting a credential and to present a proof
-                self.serializedConnection = value
-                _ = vcx.connectionRelease(connectionHandle: connectionHandle)
+            .map { connection in
+                print("Serialized connection: ", connection)
+                serializedConnection = connection
+            }
+            .flatMap({
+                vcx.connectionGetPwDid(connectionHandle: connectionHandle)
+            })
+            .flatMap({ pwDid in
+                vcx.addRecordWallet(recordType: "connection", recordId: pwDid, recordValue: serializedConnection)
+            })
+            .sink(receiveCompletion: { completion in
+                switch completion {
+                    case .finished: break
+                    case .failure(let error): fatalError(error.localizedDescription)
+                }
+            }, receiveValue: { _ in })
+    }
+    
+    @IBAction func btnUpdate(_ sender: UIButton) {
+        let vcx = VcxWrapper()
+        var pwDid = "", type = ""
+        var jsonMessage = JSON()
+        
+        self.cancellable = vcx.downloadMessages(messageStatues: "MS-103", uids: nil, pwdids: nil)
+            .map { messages in
+                print("Downloaded message: ", messages)
+                let jsonMessages = try! JSON(data: messages.data(using: .utf8)!)
+                
+                pwDid = jsonMessages[0]["pairwiseDID"].stringValue
+                
+                let decryptedPayload = jsonMessages[0]["msgs"][0]["decryptedPayload"].stringValue
+                let jsonDecryptedPayload = try! JSON(data: decryptedPayload.data(using: .utf8)!)
+                
+                let message = jsonDecryptedPayload["@msg"].stringValue
+                jsonMessage = try! JSON(data: message.data(using: .utf8)!)
+                
+                type = jsonDecryptedPayload["@type"]["name"].stringValue
+                print("Message type: ", type)
+            }
+            .flatMap({
+                vcx.getRecordWallet(recordType: "connection", recordId: pwDid)
+            })
+            .map { connection in
+                let walletRecord = try! JSON(data: connection.data(using: .utf8)!)
+                return walletRecord["value"].stringValue
+            }
+            .flatMap({ connection in
+                vcx.connectionDeserialize(serializedConnection: connection)
+            })
+            .map { handle in
+                switch type {
+                    case "aries":
+                        let innerType = jsonMessage["@type"].stringValue
+                        print("Inner type: ", innerType)
+                        
+                        //connection response
+                        if innerType == "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/connections/1.0/response" {
+                            self.handleConnection(connectionHandle: handle, pwDid: pwDid)
+                        }
+                        //ack of proof request
+                        else if innerType == "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/present-proof/1.0/ack" {
+                            self.handleProofResponse(threadId: jsonMessage["~thread"]["thid"].stringValue)
+                        }
+                    case "credential-offer":
+                        self.handleCredentialOffer(connectionHandle: handle, threadId: jsonMessage[0]["thread_id"].stringValue)
+                    case "credential":
+                        self.handleCredential(claimOfferId: jsonMessage["claim_offer_id"].stringValue)
+                    case "presentation-request":
+                        self.handlePresentationRequest(connectionHandle: handle, threadId: jsonMessage["thread_id"].stringValue)
+                    default:
+                        print("out of scope")
+                }
+                
+                //vcx.connectionRelease(connectionHandle: value)
             }
             .sink(receiveCompletion: { completion in
                 switch completion {
@@ -113,63 +169,59 @@ class ViewController: UIViewController {
             }, receiveValue: { _ in })
     }
     
-    @IBAction func btnAcceptOffer(_ sender: UIButton) {
-        let vcx = VcxWrapper()
-        var connectionHandle = Int()
-        var credentialHandle = Int()
+    func handleConnection (connectionHandle: Int, pwDid: String) {
+        print("Handle a connection response")
         
-        //Deserialize a saved connection
-        self.cancellable = vcx.connectionDeserialize(serializedConnection: self.serializedConnection!)
-            .map { handle in
-                connectionHandle = handle
-            }
+        let vcx = VcxWrapper()
+
+        self.cancellable = vcx.connectionUpdateState(connectionHandle: connectionHandle)
             .flatMap({ _ in
-                //Check agency for a credential offers
-                vcx.credentialGetOffers(connectionHandle: connectionHandle)
+                vcx.connectionSerialize(connectionHandle: connectionHandle)
             })
-            .map { offers in
-                print("Offers: ", offers)
-                
-                //Extranct an offers from string offers
-                var jsonOfferStr = ""
-
-                do {
-                    let jsonOffersArray = try JSONSerialization.jsonObject(with: Data(offers.utf8), options: []) as? [Any]
-
-                    let jsonOfferData = try JSONSerialization.data(
-                        withJSONObject: jsonOffersArray?[0] as Any,
-                        options: JSONSerialization.WritingOptions(rawValue: (0)))
-
-                    jsonOfferStr = String(decoding: jsonOfferData, as: UTF8.self)
-                    print("Offer: ", jsonOfferStr)
-                } catch {
-                    print(error.localizedDescription)
+            .flatMap({ connection in
+                vcx.updateRecordWallet(recordType: "connection", recordId: pwDid, recordValue: connection)
+            })
+            .sink(receiveCompletion: { completion in
+                switch completion {
+                    case .finished: break
+                    case .failure(let error): fatalError(error.localizedDescription)
                 }
+            }, receiveValue: { _ in })
+    }
+    
+    func handleCredentialOffer (connectionHandle: Int, threadId: String) {
+        print("Handle a credential offer")
+        
+        let vcx = VcxWrapper()
+        var credentialHandle = Int()
 
-                return jsonOfferStr
+        //Check agency for a credential offer
+        self.cancellable = vcx.credentialGetOffers(connectionHandle: connectionHandle)
+            .map { offers in
+                print("Credential offers: ", offers)
+                //Extranct an offers from string offers
+                let jsonOffers = try! JSON(data: offers.data(using: .utf8)!)
+                return jsonOffers[0].rawString()!
             }
-            .flatMap({ jsonOfferStr in
+            .flatMap({ offer in
                 //Create a credential object from the credential offer
-                vcx.credentialCreateWithOffer(sourceId: "1", credentialOffer: jsonOfferStr)
+                vcx.credentialCreateWithOffer(sourceId: "1", credentialOffer: offer)
             })
             .map { handle in
                 credentialHandle = handle
             }
-            .flatMap({ _ in
+            .flatMap({
                 //Send a credential request
                 vcx.credentialSendRequest(credentialHandle: credentialHandle, connectionHandle: connectionHandle, paymentHandle: 0)
             })
-            .map { _ in
-                //Wait for a while until faber sends a credential
-                sleep(4)
-            }
             .flatMap({ _ in
-                //Accept credential offer from faber
-                vcx.credentialUpdateState(credentialHandle: credentialHandle)
+                vcx.credentialSerialize(credentialHandle: credentialHandle)
+            })
+            .flatMap({ credential in
+                vcx.addRecordWallet(recordType: "credential", recordId: threadId, recordValue: credential)
             })
             .map { _ in
                 //Release vcx objects from memory
-                _ = vcx.connectionRelease(connectionHandle: connectionHandle)
                 _ = vcx.credentialRelease(credentialHandle: credentialHandle)
             }
             .sink(receiveCompletion: { completion in
@@ -180,105 +232,131 @@ class ViewController: UIViewController {
             }, receiveValue: { _ in })
     }
     
-    @IBAction func btnPresentProof(_ sender: UIButton) {
+    func handleCredential(claimOfferId: String) {
+        print("Handle a credential message")
+        
         let vcx = VcxWrapper()
-        var connectionHandle = Int()
+        var credentialHandle = Int()
+
+        self.cancellable = vcx.getRecordWallet(recordType: "credential", recordId: claimOfferId)
+            .map { credential in
+                let walletRecord = try! JSON(data: credential.data(using: .utf8)!)
+                return walletRecord["value"].stringValue
+            }
+            .flatMap({ credential in
+                vcx.credentialDeserialize(serializedCredential: credential)
+            })
+            .map { handle in
+                credentialHandle = handle
+            }
+            .flatMap({
+                vcx.credentialUpdateState(credentialHandle: credentialHandle)
+            })
+            .map { _ in
+                //Release vcx objects from memory
+                _ = vcx.credentialRelease(credentialHandle: credentialHandle)
+            }
+            .sink(receiveCompletion: { completion in
+                switch completion {
+                case .finished: break
+                case .failure(let error): fatalError(error.localizedDescription)
+                }
+            }, receiveValue: { _ in })
+    }
+
+    func handlePresentationRequest(connectionHandle: Int, threadId: String) {
+        print("Handle a presentation request")
+        
+        let vcx = VcxWrapper()
+        var proofHandle = Int()
+
+        //Check agency for a proof request
+        self.cancellable = vcx.proofGetRequests(connectionHandle: connectionHandle)
+            .map { requests in
+                print("Requests: ", requests)
+                //Extranct an offers from string offers
+                let jsonRequests = try! JSON(data: requests.data(using: .utf8)!)
+                return jsonRequests[0].rawString()!
+            }
+            .flatMap({ request in
+                //Create a Disclosed proof object from proof request
+                vcx.proofCreateWithRequest(sourceId: "1", proofRequest: request)
+            })
+            .map { handle in
+                proofHandle = handle
+            }
+            .flatMap({ _ in
+                //Query for credentials in the wallet that satisfy the proof request
+                vcx.proofRetrieveCredentials(proofHandle: proofHandle)
+            })
+            .map { matchingCredentials in
+                print("Matching credentials: ", matchingCredentials)
+
+                //Use the first available credentials to satisfy the proof request
+                var jsonProofCredentials = try! JSON(data: matchingCredentials.data(using: .utf8)!)
+                
+                for (key, _):(String, JSON) in jsonProofCredentials["attrs"] {
+                    let selectedCredential = jsonProofCredentials["attrs"][key][0]
+                    jsonProofCredentials["attrs"][key] = ["credential": selectedCredential]
+                }
+                
+                return jsonProofCredentials.rawString()!
+            }
+            .flatMap({ selectedCredentials in
+                //Generate the proof
+                vcx.proofGenerate(proofHandle: proofHandle, selectedCredentials: selectedCredentials, selfAttestedAttrs: "{}")
+            })
+            .flatMap({ _ in
+                //Send the proof
+                vcx.proofSend(proofHandle: proofHandle, connectionHandle: connectionHandle)
+            })
+            .flatMap({ _ in
+                vcx.proofSerialize(proofHandle: proofHandle)
+            })
+            .flatMap({ proof in
+                vcx.addRecordWallet(recordType: "proof", recordId: threadId, recordValue: proof)
+            })
+            .map { _ in
+                //Release vcx objects from memory
+                _ = vcx.proofRelease(proofHandle: proofHandle)
+            }
+            .sink(receiveCompletion: { completion in
+                switch completion {
+                    case .finished: break
+                    case .failure(let error): fatalError(error.localizedDescription)
+                }
+            }, receiveValue: { _ in })
+    }
+    
+    func handleProofResponse(threadId: String) {
+        print("Handle a proof response")
+        
+        let vcx = VcxWrapper()
         var proofHandle = Int()
         
-        //Deserialize a saved connection
-        self.cancellable = vcx.connectionDeserialize(serializedConnection: self.serializedConnection!)
-        .map { handle in
-            connectionHandle = handle
+        self.cancellable = vcx.getRecordWallet(recordType: "proof", recordId: threadId)
+        .map { proof in
+            let walletRecord = try! JSON(data: proof.data(using: .utf8)!)
+            return walletRecord["value"].stringValue
         }
-        .flatMap({ _ in
-            //Check agency for a proof request
-            vcx.proofGetRequests(connectionHandle: connectionHandle)
-        })
-        .map { requests in
-            var jsonRequestStr = ""
-
-            //Extranct a request from string requests
-            do {
-                let jsonRequestsArray = try JSONSerialization.jsonObject(with: Data(requests.utf8), options: []) as? [Any]
-
-                let jsonRequestData = try JSONSerialization.data(
-                    withJSONObject: jsonRequestsArray?[0] as Any,
-                    options: JSONSerialization.WritingOptions(rawValue: (0)))
-
-                jsonRequestStr = String(decoding: jsonRequestData, as: UTF8.self)
-                print("Request: ", jsonRequestStr)
-            } catch {
-                print(error.localizedDescription)
-            }
-            
-            return jsonRequestStr
-        }
-        .flatMap({ jsonRequestStr in
-            //Create a Disclosed proof object from proof request
-            vcx.proofCreateWithRequest(sourceId: "1", proofRequest: jsonRequestStr)
+        .flatMap({ proof in
+            vcx.proofDeserialize(serializedProof: proof)
         })
         .map { handle in
             proofHandle = handle
         }
-        .flatMap({ _ in
-            //Query for credentials in the wallet that satisfy the proof request
-            vcx.proofRetrieveCredentials(proofHandle: proofHandle)
-        })
-        .map { matchingCredentials in
-            print("Credential: ", matchingCredentials)
-            
-            //Use the first available credentials to satisfy the proof request
-            var selectedCredentials = ""
-            
-            do {
-                
-               var proofCredentials = try JSONSerialization.jsonObject(with: Data(matchingCredentials.utf8), options: []) as? [String:[String:Any]]
-
-                for attribute in (proofCredentials?["attrs"]!.keys)! {
-                    let selectedCredentials = proofCredentials?["attrs"]![attribute] as! [Dictionary<String, Any>]
-
-                    proofCredentials?["attrs"]![attribute] = ["credential": selectedCredentials[0]]
-                }
-                
-                let proofCredentialsData = try JSONSerialization.data(
-                    withJSONObject: proofCredentials as Any,
-                options: JSONSerialization.WritingOptions(rawValue: (0)))
-
-                selectedCredentials = String(decoding: proofCredentialsData, as: UTF8.self)
-                print("Request: ", selectedCredentials)
-            } catch {
-                print(error.localizedDescription)
-            }
-            
-            return selectedCredentials
-        }
-        .flatMap({ selectedCredentials in
-            //Generate the proof
-            vcx.proofGenerate(proofHandle: proofHandle, selectedCredentials: selectedCredentials, selfAttestedAttrs: "{}")
-        })
-        .flatMap({ _ in
-            //Send the proof
-            vcx.proofSend(proofHandle: proofHandle, connectionHandle: connectionHandle)
-        })
-        .map { _ in
-            //Wait for a while until faber validate a proof and send an ack
-            sleep(4)
-        }
-        .flatMap({ _ in
-            //Get an ack from faber and finalize the proof process
+        .flatMap({
             vcx.proofUpdateState(proofHandle: proofHandle)
         })
         .map { _ in
             //Release vcx objects from memory
-            _ = vcx.connectionRelease(connectionHandle: connectionHandle)
             _ = vcx.proofRelease(proofHandle: proofHandle)
         }
         .sink(receiveCompletion: { completion in
             switch completion {
-                case .finished: break
-                case .failure(let error): fatalError(error.localizedDescription)
+            case .finished: break
+            case .failure(let error): fatalError(error.localizedDescription)
             }
         }, receiveValue: { _ in })
     }
 }
-
