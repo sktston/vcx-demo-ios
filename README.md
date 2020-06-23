@@ -1,6 +1,8 @@
 # LibVCX Demo iOS Project for Alice
 This iOS demo project code is based on [vcx-skeleton-ios](https://github.com/sktston/vcx-skeleton-ios), and implements demo code for Alice on iOS simulator or actual devices. You can use any Faber demo in different wrappers ([python](https://github.com/hyperledger/indy-sdk/tree/master/vcx/wrappers/python3/demo) or [node](https://github.com/hyperledger/indy-sdk/tree/master/vcx/wrappers/node)) for testing. Internally, the application serializes and deserializes the vcx connection object between operations. 
 
+**Note**: If you checkout the [develop branch](https://github.com/sktston/vcx-demo-ios/tree/develop), there is a more sophisticated demo project that utilizes non-secret wallet APIs to save/retrieve VCX objects. Moreover, it downloads messages from the cloud agent, and processes them according to it's context. 
+
 ## Prerequisites
 
 #### Xcode
@@ -14,7 +16,7 @@ Run `pod install` from the root folder of the project. It's getting the Vcx fram
 ## Steps to run Demo
 
 #### Cloud Agent
-You would like to start [Dummy Cloud Agent](https://github.com/hyperledger/indy-sdk/tree/master/vcx/dummy-cloud-agent) in the remote host with a specific IP address rather than localhost, or you need to modify the `serviceEndPoint` of invitation from Faber to 10.0.2.2 which is the localhost of the iOS simulator. 
+You need to start [Dummy Cloud Agent](https://github.com/hyperledger/indy-sdk/tree/master/vcx/dummy-cloud-agent) in the remote host with a specific IP address rather than localhost
 
 Update the `agncy_url` field in the [ViewController.swift](https://github.com/sktston/vcx-demo-ios/blob/master/VcxDemo/ViewController.swift) file with your cloud agent's url
 
