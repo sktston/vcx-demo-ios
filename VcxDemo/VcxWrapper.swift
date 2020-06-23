@@ -294,7 +294,7 @@ class VcxWrapper {
     
     func proofGetState(proofHandle: Int) -> Future<Int, Error> {
         return Future { promise in
-            ConnectMeVcx().credentialGetState(proofHandle) { error, state in
+            ConnectMeVcx().proofGetState(proofHandle) { error, state in
                 if error != nil && (error as NSError?)?.code != 0 {
                     promise(.failure(error!))
                 } else {
@@ -307,11 +307,11 @@ class VcxWrapper {
     
     func proofSerialize(proofHandle: Int) -> Future<String, Error> {
         return Future { promise in
-            ConnectMeVcx().credentialSerialize(proofHandle) { error, serializedProof in
+            ConnectMeVcx().proofSerialize(vcx_proof_handle_t(proofHandle)) { error, serializedProof in
                 if error != nil && (error as NSError?)?.code != 0 {
                     promise(.failure(error!))
                 } else {
-                    print("credentialSerialize was successful!")
+                    print("proofSerialize was successful!")
                     promise(.success(serializedProof!))
                 }
             }
@@ -324,7 +324,7 @@ class VcxWrapper {
                 if error != nil && (error as NSError?)?.code != 0 {
                     promise(.failure(error!))
                 } else {
-                    print("credentialDeserialize was successful!")
+                    print("proofDeserialize was successful!")
                     promise(.success(Int(proofHandle)))
                 }
             }
