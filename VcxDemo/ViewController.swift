@@ -204,7 +204,7 @@ class ViewController: UIViewController {
         self.cancellable = vcx.credentialGetOffers(connectionHandle: connectionHandle)
             .map { offers in
                 print("Credential offers: ", offers)
-                //Extranct an offers from string offers
+                //Extranct an offer from string offers
                 let jsonOffers = try! JSON(data: offers.data(using: .utf8)!)
                 return jsonOffers[0].rawString()!
             }
@@ -288,7 +288,7 @@ class ViewController: UIViewController {
         self.cancellable = vcx.proofGetRequests(connectionHandle: connectionHandle)
             .map { requests in
                 print("Requests: ", requests)
-                //Extranct an offers from string offers
+                //Extranct a request from string requests
                 let jsonRequests = try! JSON(data: requests.data(using: .utf8)!)
                 return jsonRequests[0].rawString()!
             }
