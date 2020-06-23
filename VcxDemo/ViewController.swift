@@ -8,6 +8,7 @@
 
 import UIKit
 import Combine
+import SwiftyJSON
 
 class ViewController: UIViewController {
     var cancellable: AnyCancellable?
@@ -44,34 +45,25 @@ class ViewController: UIViewController {
                 //Set some additional configuration options specific to alice
                 var jsonConfigStr = ""
 
-                do {
-                    var jsonConfigDic = try JSONDecoder().decode(Dictionary<String, String>.self, from: Data(config.utf8))
+                var jsonConfig = try! JSON(data: config.data(using: .utf8)!)
 
-                    jsonConfigDic["institution_name"] = "alice_institute"
-                    jsonConfigDic["institution_logo_url"] = "http://robohash.org/234"
-                    jsonConfigDic["genesis_path"] = genesisFilePath
+                jsonConfig["institution_name"].string = "alice_institute"
+                jsonConfig["institution_logo_url"].string = "http://robohash.org/234"
+                jsonConfig["genesis_path"].string = genesisFilePath
 
-                    let jsonEncoder = JSONEncoder()
-                    jsonEncoder.outputFormatting = .withoutEscapingSlashes
-
-                    let jsonConfigData = try jsonEncoder.encode(jsonConfigDic)
-                    jsonConfigStr = String(decoding: jsonConfigData, as: UTF8.self)
-
-                    print("Updated json: ", jsonConfigStr)
-
-                } catch {
-                    print(error.localizedDescription)
-                }
+                jsonConfigStr = jsonConfig.rawString()!
+                print("Updated json: ", jsonConfigStr)
 
                 return jsonConfigStr
-            }.flatMap({ config in
+            }
+            .flatMap({ config in
                 //Initialize libvcx with a new configuration
                 vcx.initWithConfig(config: config)
             })
             .sink(receiveCompletion: { completion in
                 switch completion {
-                case .finished: break
-                case .failure(let error): fatalError(error.localizedDescription)
+                    case .finished: break
+                    case .failure(let error): fatalError(error.localizedDescription)
                 }
             }, receiveValue: { _ in })
     }
@@ -88,13 +80,13 @@ class ViewController: UIViewController {
             .map { handle in
                 connectionHandle = handle
             }
-            .flatMap({ _ in
+            .flatMap({
                 vcx.connectionConnect(connectionHandle: connectionHandle, connectionType: "{\"use_public_did\":true}")
             })
             .map { _ in
                 sleep(4)
             }
-            .flatMap({ _ in
+            .flatMap({
                 vcx.connectionUpdateState(connectionHandle: connectionHandle)
             })
             .flatMap({ _ in
@@ -123,39 +115,24 @@ class ViewController: UIViewController {
             .map { handle in
                 connectionHandle = handle
             }
-            .flatMap({ _ in
+            .flatMap({
                 //Check agency for a credential offers
                 vcx.credentialGetOffers(connectionHandle: connectionHandle)
             })
             .map { offers in
-                print("Offers: ", offers)
-                
+                print("Credential offers: ", offers)
                 //Extranct an offers from string offers
-                var jsonOfferStr = ""
-
-                do {
-                    let jsonOffersArray = try JSONSerialization.jsonObject(with: Data(offers.utf8), options: []) as? [Any]
-
-                    let jsonOfferData = try JSONSerialization.data(
-                        withJSONObject: jsonOffersArray?[0] as Any,
-                        options: JSONSerialization.WritingOptions(rawValue: (0)))
-
-                    jsonOfferStr = String(decoding: jsonOfferData, as: UTF8.self)
-                    print("Offer: ", jsonOfferStr)
-                } catch {
-                    print(error.localizedDescription)
-                }
-
-                return jsonOfferStr
+                let jsonOffers = try! JSON(data: offers.data(using: .utf8)!)
+                return jsonOffers[0].rawString()!
             }
-            .flatMap({ jsonOfferStr in
+            .flatMap({ offer in
                 //Create a credential object from the credential offer
-                vcx.credentialCreateWithOffer(sourceId: "1", credentialOffer: jsonOfferStr)
+                vcx.credentialCreateWithOffer(sourceId: "1", credentialOffer: offer)
             })
             .map { handle in
                 credentialHandle = handle
             }
-            .flatMap({ _ in
+            .flatMap({
                 //Send a credential request
                 vcx.credentialSendRequest(credentialHandle: credentialHandle, connectionHandle: connectionHandle, paymentHandle: 0)
             })
@@ -163,7 +140,7 @@ class ViewController: UIViewController {
                 //Wait for a while until faber sends a credential
                 sleep(4)
             }
-            .flatMap({ _ in
+            .flatMap({
                 //Accept credential offer from faber
                 vcx.credentialUpdateState(credentialHandle: credentialHandle)
             })
@@ -190,37 +167,23 @@ class ViewController: UIViewController {
         .map { handle in
             connectionHandle = handle
         }
-        .flatMap({ _ in
+        .flatMap({
             //Check agency for a proof request
             vcx.proofGetRequests(connectionHandle: connectionHandle)
         })
         .map { requests in
-            var jsonRequestStr = ""
-
             //Extranct a request from string requests
-            do {
-                let jsonRequestsArray = try JSONSerialization.jsonObject(with: Data(requests.utf8), options: []) as? [Any]
-
-                let jsonRequestData = try JSONSerialization.data(
-                    withJSONObject: jsonRequestsArray?[0] as Any,
-                    options: JSONSerialization.WritingOptions(rawValue: (0)))
-
-                jsonRequestStr = String(decoding: jsonRequestData, as: UTF8.self)
-                print("Request: ", jsonRequestStr)
-            } catch {
-                print(error.localizedDescription)
-            }
-            
-            return jsonRequestStr
+            let jsonRequests = try! JSON(data: requests.data(using: .utf8)!)
+            return jsonRequests[0].rawString()!
         }
-        .flatMap({ jsonRequestStr in
+        .flatMap({ request in
             //Create a Disclosed proof object from proof request
-            vcx.proofCreateWithRequest(sourceId: "1", proofRequest: jsonRequestStr)
+            vcx.proofCreateWithRequest(sourceId: "1", proofRequest: request)
         })
         .map { handle in
             proofHandle = handle
         }
-        .flatMap({ _ in
+        .flatMap({
             //Query for credentials in the wallet that satisfy the proof request
             vcx.proofRetrieveCredentials(proofHandle: proofHandle)
         })
@@ -228,29 +191,14 @@ class ViewController: UIViewController {
             print("Credential: ", matchingCredentials)
             
             //Use the first available credentials to satisfy the proof request
-            var selectedCredentials = ""
+            var jsonProofCredentials = try! JSON(data: matchingCredentials.data(using: .utf8)!)
             
-            do {
-                
-               var proofCredentials = try JSONSerialization.jsonObject(with: Data(matchingCredentials.utf8), options: []) as? [String:[String:Any]]
-
-                for attribute in (proofCredentials?["attrs"]!.keys)! {
-                    let selectedCredentials = proofCredentials?["attrs"]![attribute] as! [Dictionary<String, Any>]
-
-                    proofCredentials?["attrs"]![attribute] = ["credential": selectedCredentials[0]]
-                }
-                
-                let proofCredentialsData = try JSONSerialization.data(
-                    withJSONObject: proofCredentials as Any,
-                options: JSONSerialization.WritingOptions(rawValue: (0)))
-
-                selectedCredentials = String(decoding: proofCredentialsData, as: UTF8.self)
-                print("Request: ", selectedCredentials)
-            } catch {
-                print(error.localizedDescription)
+            for (key, _):(String, JSON) in jsonProofCredentials["attrs"] {
+                let selectedCredential = jsonProofCredentials["attrs"][key][0]
+                jsonProofCredentials["attrs"][key] = ["credential": selectedCredential]
             }
             
-            return selectedCredentials
+            return jsonProofCredentials.rawString()!
         }
         .flatMap({ selectedCredentials in
             //Generate the proof
@@ -264,7 +212,7 @@ class ViewController: UIViewController {
             //Wait for a while until faber validate a proof and send an ack
             sleep(4)
         }
-        .flatMap({ _ in
+        .flatMap({
             //Get an ack from faber and finalize the proof process
             vcx.proofUpdateState(proofHandle: proofHandle)
         })

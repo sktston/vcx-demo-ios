@@ -1,16 +1,21 @@
 PODS:
+  - SwiftyJSON (5.0.0)
   - vcx (0.8.0)
 
 DEPENDENCIES:
+  - SwiftyJSON (~> 5.0)
   - vcx (= 0.8.0)
 
 SPEC REPOS:
+  https://github.com/CocoaPods/Specs.git:
+    - SwiftyJSON
   https://github.com/sktston/Specs.git:
     - vcx
 
 SPEC CHECKSUMS:
-  vcx: 19a86a3e51ee326b1905b917dde07a3d2aeaf0c5
+  SwiftyJSON: 36413e04c44ee145039d332b4f4e2d3e8d6c4db7
+  vcx: dd225c78a9edca8999590786c78d6f4beeb35946
 
-PODFILE CHECKSUM: c45388db7acea218d9337d0a6ec2182790fc5d61
+PODFILE CHECKSUM: 68fcedc15c1b32b8ea11dc8c2aa7d1db62a61bb3
 
 COCOAPODS: 1.8.0
