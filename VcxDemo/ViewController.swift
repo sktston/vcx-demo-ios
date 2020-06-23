@@ -159,8 +159,6 @@ class ViewController: UIViewController {
                     default:
                         print("out of scope")
                 }
-                
-                //_ = vcx.connectionRelease(connectionHandle: handle)
             }
             .sink(receiveCompletion: { completion in
                 switch completion {
