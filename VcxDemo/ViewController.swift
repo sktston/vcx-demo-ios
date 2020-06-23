@@ -109,6 +109,7 @@ class ViewController: UIViewController {
         var pwDid = "", type = ""
         var jsonMessage = JSON()
         
+        //doenload messages from the agency
         self.cancellable = vcx.downloadMessages(messageStatues: "MS-103", uids: nil, pwdids: nil)
             .map { messages in
                 print("Downloaded message: ", messages)
@@ -147,19 +148,19 @@ class ViewController: UIViewController {
                         }
                         //ack of proof request
                         else if innerType == "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/present-proof/1.0/ack" {
-                            self.handleProofResponse(threadId: jsonMessage["~thread"]["thid"].stringValue)
+                            self.handleProofResponse(connectionHandle: handle, threadId: jsonMessage["~thread"]["thid"].stringValue)
                         }
                     case "credential-offer":
                         self.handleCredentialOffer(connectionHandle: handle, threadId: jsonMessage[0]["thread_id"].stringValue)
                     case "credential":
-                        self.handleCredential(claimOfferId: jsonMessage["claim_offer_id"].stringValue)
+                        self.handleCredential(connectionHandle: handle, claimOfferId: jsonMessage["claim_offer_id"].stringValue)
                     case "presentation-request":
                         self.handlePresentationRequest(connectionHandle: handle, threadId: jsonMessage["thread_id"].stringValue)
                     default:
                         print("out of scope")
                 }
                 
-                //vcx.connectionRelease(connectionHandle: value)
+                //_ = vcx.connectionRelease(connectionHandle: handle)
             }
             .sink(receiveCompletion: { completion in
                 switch completion {
@@ -181,6 +182,10 @@ class ViewController: UIViewController {
             .flatMap({ connection in
                 vcx.updateRecordWallet(recordType: "connection", recordId: pwDid, recordValue: connection)
             })
+            .map { _ in
+                //Release vcx objects from memory
+                _ = vcx.connectionRelease(connectionHandle: connectionHandle)
+            }
             .sink(receiveCompletion: { completion in
                 switch completion {
                     case .finished: break
@@ -223,6 +228,7 @@ class ViewController: UIViewController {
             .map { _ in
                 //Release vcx objects from memory
                 _ = vcx.credentialRelease(credentialHandle: credentialHandle)
+                _ = vcx.connectionRelease(connectionHandle: connectionHandle)
             }
             .sink(receiveCompletion: { completion in
                 switch completion {
@@ -232,8 +238,9 @@ class ViewController: UIViewController {
             }, receiveValue: { _ in })
     }
     
-    func handleCredential(claimOfferId: String) {
+    func handleCredential(connectionHandle: Int, claimOfferId: String) {
         print("Handle a credential message")
+        print("connectionHandle: ", connectionHandle)
         
         let vcx = VcxWrapper()
         var credentialHandle = Int()
@@ -241,7 +248,14 @@ class ViewController: UIViewController {
         self.cancellable = vcx.getRecordWallet(recordType: "credential", recordId: claimOfferId)
             .map { credential in
                 let walletRecord = try! JSON(data: credential.data(using: .utf8)!)
-                return walletRecord["value"].stringValue
+                let serializedCredential = walletRecord["value"].stringValue
+                
+                //It replaces a connection handle in the credential with a currently available one.
+                //There should be a better way to handle this issue.
+                var jsonSerializedCredential = try! JSON(data: serializedCredential.data(using: .utf8)!)
+                jsonSerializedCredential["data"]["holder_sm"]["state"]["RequestSent"]["connection_handle"].int = connectionHandle
+                
+                return jsonSerializedCredential.rawString()!
             }
             .flatMap({ credential in
                 vcx.credentialDeserialize(serializedCredential: credential)
@@ -255,6 +269,7 @@ class ViewController: UIViewController {
             .map { _ in
                 //Release vcx objects from memory
                 _ = vcx.credentialRelease(credentialHandle: credentialHandle)
+                _ = vcx.connectionRelease(connectionHandle: connectionHandle)
             }
             .sink(receiveCompletion: { completion in
                 switch completion {
@@ -319,6 +334,7 @@ class ViewController: UIViewController {
             .map { _ in
                 //Release vcx objects from memory
                 _ = vcx.proofRelease(proofHandle: proofHandle)
+                _ = vcx.connectionRelease(connectionHandle: connectionHandle)
             }
             .sink(receiveCompletion: { completion in
                 switch completion {
@@ -328,7 +344,7 @@ class ViewController: UIViewController {
             }, receiveValue: { _ in })
     }
     
-    func handleProofResponse(threadId: String) {
+    func handleProofResponse(connectionHandle: Int, threadId: String) {
         print("Handle a proof response")
         
         let vcx = VcxWrapper()
@@ -337,7 +353,15 @@ class ViewController: UIViewController {
         self.cancellable = vcx.getRecordWallet(recordType: "proof", recordId: threadId)
         .map { proof in
             let walletRecord = try! JSON(data: proof.data(using: .utf8)!)
-            return walletRecord["value"].stringValue
+            
+            let serializedProof = walletRecord["value"].stringValue
+            
+            //It replaces a connection handle in the credential with a currently available one.
+            //There should be a better way to handle this issue.
+            var jsonSerializedProof = try! JSON(data: serializedProof.data(using: .utf8)!)
+            jsonSerializedProof["data"]["prover_sm"]["state"]["PresentationSent"]["connection_handle"].int = connectionHandle
+            
+            return jsonSerializedProof.rawString()!
         }
         .flatMap({ proof in
             vcx.proofDeserialize(serializedProof: proof)
@@ -351,6 +375,7 @@ class ViewController: UIViewController {
         .map { _ in
             //Release vcx objects from memory
             _ = vcx.proofRelease(proofHandle: proofHandle)
+            _ = vcx.connectionRelease(connectionHandle: connectionHandle)
         }
         .sink(receiveCompletion: { completion in
             switch completion {
