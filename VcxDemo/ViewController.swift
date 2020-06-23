@@ -240,7 +240,6 @@ class ViewController: UIViewController {
     
     func handleCredential(connectionHandle: Int, claimOfferId: String) {
         print("Handle a credential message")
-        print("connectionHandle: ", connectionHandle)
         
         let vcx = VcxWrapper()
         var credentialHandle = Int()
