@@ -247,7 +247,7 @@ class ViewController: UIViewController {
                 let walletRecord = try! JSON(data: credential.data(using: .utf8)!)
                 let serializedCredential = walletRecord["value"].stringValue
                 
-                //It replaces a connection handle in the credential with a currently available one.
+                //It replaces a connection handle in the credential object with a currently available one.
                 //There should be a better way to handle this issue.
                 var jsonSerializedCredential = try! JSON(data: serializedCredential.data(using: .utf8)!)
                 jsonSerializedCredential["data"]["holder_sm"]["state"]["RequestSent"]["connection_handle"].int = connectionHandle
@@ -353,7 +353,7 @@ class ViewController: UIViewController {
             
             let serializedProof = walletRecord["value"].stringValue
             
-            //It replaces a connection handle in the credential with a currently available one.
+            //It replaces a connection handle in the proof object with a currently available one.
             //There should be a better way to handle this issue.
             var jsonSerializedProof = try! JSON(data: serializedProof.data(using: .utf8)!)
             jsonSerializedProof["data"]["prover_sm"]["state"]["PresentationSent"]["connection_handle"].int = connectionHandle
