@@ -14,7 +14,7 @@ Run `pod install` from the root folder of the project. It's getting the Vcx fram
 ## Steps to run Demo
 
 #### Cloud Agent
-You would like to start [Dummy Cloud Agent](https://github.com/hyperledger/indy-sdk/tree/master/vcx/dummy-cloud-agent) in the remote host with a specific IP address rather than localhost, or you need to modify the `serviceEndPoint` of invitation from Faber to 10.0.2.2 which is the localhost of the iOS simulator. 
+You need to start [Dummy Cloud Agent](https://github.com/hyperledger/indy-sdk/tree/master/vcx/dummy-cloud-agent) in the remote host with a specific IP address rather than localhost
 
 Update the `agncy_url` field in the [ViewController.swift](https://github.com/sktston/vcx-demo-ios/blob/master/VcxDemo/ViewController.swift) file with your cloud agent's url
 
@@ -27,9 +27,10 @@ Update [genesis.txn](https://github.com/sktston/vcx-demo-ios/blob/master/VcxDemo
 1. Run the Faber with a different demo application
 1. Click the `Provision` button to provision an agent, and initialize VCX. 
 1. Copy the invitation from the Faber, and paste it in the Invitation field of the Alice Demo Application
-1. Click the `Connection Request` button
-1. After connection established, issue credential from Faber demo
-1. Click the `Accept Offer` button in the Alice Demo Application, you will get a credential in a moment
+1. Click the `Connection Request` button, and then click the `Update` button. --> Connection will be established
+1. Issue a credential from Faber demo
+1. Click the `Update` button to get a credential offer from Faber. After a few momoent, Faber sends the credential. 
+1. Click the `Update` button again to get a credential from the cloud agent. 
 1. In the Faber Demo, ask for proof request
-1. Click the `Present Proof` button. Faber will verify the proof and send the ack after that. 
-1. Alice Demo Application will get an ack, and you are done.
+1. Click the `Update` button in the Alice demo. Alice present the proof, and Faber will verify it and send the ack after that. 
+1. Click the `Update` button in the Alice Demo. It will get an ack, and you are done.
