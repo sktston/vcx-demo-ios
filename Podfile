@@ -8,7 +8,7 @@ target 'VcxDemo' do
   use_frameworks!
 
   # Pods for VcxDemo
-  pod 'vcx', '0.8.0'
+  pod 'vcx', '0.8.2'
   pod 'SwiftyJSON', '~> 5.0'
 
 end
