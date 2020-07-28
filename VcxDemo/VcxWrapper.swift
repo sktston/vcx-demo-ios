@@ -369,9 +369,9 @@ class VcxWrapper {
         return Int(ConnectMeVcx().proofRelease(proofHandle))
     }
     
-    func addRecordWallet(recordType: String, recordId: String, recordValue: String) -> Future<String, Error> {
+    func addRecordWallet(recordType: String, recordId: String, recordValue: String, tagsJson: String) -> Future<String, Error> {
         return Future { promise in
-            ConnectMeVcx().addRecordWallet(recordType, recordId: recordId, recordValue: recordValue) { error in
+            ConnectMeVcx().addRecordWallet(recordType, recordId: recordId, recordValue: recordValue, tagsJson: tagsJson) { error in
                 if error != nil && (error as NSError?)?.code != 0 {
                     promise(.failure(error!))
                 } else {
@@ -382,9 +382,9 @@ class VcxWrapper {
         }
     }
     
-    func getRecordWallet(recordType: String, recordId: String) -> Future<String, Error> {
+    func getRecordWallet(recordType: String, recordId: String, optionsJson: String) -> Future<String, Error> {
         return Future { promise in
-            ConnectMeVcx().getRecordWallet(recordType, recordId: recordId) { error, walletValue in
+            ConnectMeVcx().getRecordWallet(recordType, recordId: recordId, optionsJson: optionsJson) { error, walletValue in
                 if error != nil && (error as NSError?)?.code != 0 {
                     promise(.failure(error!))
                 } else {
@@ -408,14 +408,105 @@ class VcxWrapper {
         }
     }
     
-    func downloadMessages(messageStatues: String, uids: String?, pwdids: String?) -> Future<String, Error> {
+    func addRecordTagsWallet(recordType: String, recordId: String, tagsJson: String) -> Future<String, Error> {
         return Future { promise in
-            ConnectMeVcx().downloadMessages(messageStatues, uid_s: uids, pwdids: pwdids) { error, messages in
+            ConnectMeVcx().addRecordTagsWallet(recordType, recordId: recordId, tagsJson: tagsJson) { error in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("addRecordTagsWallet was successful!")
+                    promise(.success(""))
+                }
+            }
+        }
+    }
+    
+    func updateRecordTagsWallet(recordType: String, recordId: String, tagsJson: String) -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().updateRecordTagsWallet(recordType, recordId: recordId, tagsJson: tagsJson) { error in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("updateRecordTagsWallet was successful!")
+                    promise(.success(""))
+                }
+            }
+        }
+    }
+    
+    func deleteRecordTagsWallet(recordType: String, recordId: String, tagNamesJson: String) -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().deleteRecordTagsWallet(recordType, recordId: recordId, tagNamesJson: tagNamesJson) { error in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("deleteRecordTagsWallet was successful!")
+                    promise(.success(""))
+                }
+            }
+        }
+    }
+    
+    func openSearchWallet(recordType: String, queryJson: String, optionsJson: String) -> Future<Int, Error> {
+        return Future { promise in
+            ConnectMeVcx().openSearchWallet(recordType, queryJson: queryJson, optionsJson: optionsJson) { error, searchHandle in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("openSearchWallet was successful!")
+                    promise(.success(searchHandle))
+                }
+            }
+        }
+    }
+    
+    func searchNextRecordsWallet(searchHandle: Int, count: Int) -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().searchNextRecordsWallet(searchHandle, count: Int32(count)) { error, records in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("searchNextRecordsWallet was successful!")
+                    promise(.success(records!))
+                }
+            }
+        }
+    }
+    
+    func closeSearchWallet(searchHandle: Int) -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().closeSearchWallet(searchHandle) { error in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("closeSearchWallet was successful!")
+                    promise(.success(""))
+                }
+            }
+        }
+    }
+    
+    func downloadMessages(messageStatus: String, uids: String?, pwdids: String?) -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().downloadMessages(messageStatus, uid_s: uids, pwdids: pwdids) { error, messages in
                 if error != nil && (error as NSError?)?.code != 0 {
                     promise(.failure(error!))
                 } else {
                     print("downloadMessages was successful!")
                     promise(.success(messages!))
+                }
+            }
+        }
+    }
+    
+    func updateMessages(messageStatus: String, magJson: String) -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().updateMessages(messageStatus, pwdidsJson: magJson) { error in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("updateMessages was successful!")
+                    promise(.success(""))
                 }
             }
         }
