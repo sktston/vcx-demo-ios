@@ -25,7 +25,7 @@ class ViewController: UIViewController {
 
         let provisionConfig = """
             {
-              "agency_url": "http://15.165.161.165:8080",
+              "agency_url": "http://13.125.5.122:8080",
               "agency_did": "VsKV7grR1BUE29mG2Fm2kX",
               "agency_verkey": "Hezce2UWMZ3wUhVkh2LfKSs8nDzWwzs2Win7EzNN3YaR",
               "wallet_name": "alice_wallet",
