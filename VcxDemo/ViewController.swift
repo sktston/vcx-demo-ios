@@ -32,7 +32,7 @@ class ViewController: UIViewController {
               "wallet_key": "123",
               "payment_method": "null",
               "enterprise_seed": "000000000000000000000000Trustee1",
-              "protocol_type": "3.0"
+              "protocol_type": "4.0"
             }
             """
 
@@ -94,7 +94,7 @@ class ViewController: UIViewController {
                 vcx.connectionGetPwDid(connectionHandle: connectionHandle)
             })
             .flatMap({ pwDid in
-                vcx.addRecordWallet(recordType: "connection", recordId: pwDid, recordValue: serializedConnection)
+                vcx.addRecordWallet(recordType: "connection", recordId: pwDid, recordValue: serializedConnection, tagsJson: "")
             })
             .sink(receiveCompletion: { completion in
                 switch completion {
@@ -106,16 +106,18 @@ class ViewController: UIViewController {
     
     @IBAction func btnUpdate(_ sender: UIButton) {
         let vcx = VcxWrapper()
-        var pwDid = "", type = ""
+        var pwDid = "", uid = "", stateUpdateMsg = "", type = ""
         var jsonMessage = JSON()
         
         //doenload messages from the agency
-        self.cancellable = vcx.downloadMessages(messageStatues: "MS-103", uids: nil, pwdids: nil)
+        self.cancellable = vcx.downloadMessages(messageStatus: "MS-103", uids: nil, pwdids: nil)
             .map { messages in
                 print("Downloaded message: ", messages)
                 let jsonMessages = try! JSON(data: messages.data(using: .utf8)!)
                 
                 pwDid = jsonMessages[0]["pairwiseDID"].stringValue
+                uid = jsonMessages[0]["msgs"][0]["uid"].stringValue
+                stateUpdateMsg = "[{\"pairwiseDID\":\"" + pwDid + "\",\"uids\":[\"" + uid + "\"]}]";
                 
                 let decryptedPayload = jsonMessages[0]["msgs"][0]["decryptedPayload"].stringValue
                 let jsonDecryptedPayload = try! JSON(data: decryptedPayload.data(using: .utf8)!)
@@ -127,7 +129,7 @@ class ViewController: UIViewController {
                 print("Message type: ", type)
             }
             .flatMap({
-                vcx.getRecordWallet(recordType: "connection", recordId: pwDid)
+                vcx.getRecordWallet(recordType: "connection", recordId: pwDid, optionsJson: "")
             })
             .map { connection in
                 let walletRecord = try! JSON(data: connection.data(using: .utf8)!)
@@ -151,11 +153,11 @@ class ViewController: UIViewController {
                             self.handleProofResponse(connectionHandle: handle, threadId: jsonMessage["~thread"]["thid"].stringValue)
                         }
                     case "credential-offer":
-                        self.handleCredentialOffer(connectionHandle: handle, threadId: jsonMessage[0]["thread_id"].stringValue)
+                        self.handleCredentialOffer(connectionHandle: handle, threadId: jsonMessage["@id"].stringValue, stateUpdateMsg: stateUpdateMsg)
                     case "credential":
-                        self.handleCredential(connectionHandle: handle, claimOfferId: jsonMessage["claim_offer_id"].stringValue)
+                        self.handleCredential(connectionHandle: handle, threadId: jsonMessage["~thread"]["thid"].stringValue)
                     case "presentation-request":
-                        self.handlePresentationRequest(connectionHandle: handle, threadId: jsonMessage["thread_id"].stringValue)
+                        self.handlePresentationRequest(connectionHandle: handle, threadId: jsonMessage["@id"].stringValue, stateUpdateMsg: stateUpdateMsg)
                     default:
                         print("out of scope")
                 }
@@ -192,7 +194,7 @@ class ViewController: UIViewController {
             }, receiveValue: { _ in })
     }
     
-    func handleCredentialOffer (connectionHandle: Int, threadId: String) {
+    func handleCredentialOffer (connectionHandle: Int, threadId: String, stateUpdateMsg: String) {
         print("Handle a credential offer")
         
         let vcx = VcxWrapper()
@@ -214,6 +216,10 @@ class ViewController: UIViewController {
                 credentialHandle = handle
             }
             .flatMap({
+                //Update a state in the agency
+                vcx.updateMessages(messageStatus: "MS-106", magJson: stateUpdateMsg)
+            })
+            .flatMap({ _ in
                 //Send a credential request
                 vcx.credentialSendRequest(credentialHandle: credentialHandle, connectionHandle: connectionHandle, paymentHandle: 0)
             })
@@ -221,7 +227,7 @@ class ViewController: UIViewController {
                 vcx.credentialSerialize(credentialHandle: credentialHandle)
             })
             .flatMap({ credential in
-                vcx.addRecordWallet(recordType: "credential", recordId: threadId, recordValue: credential)
+                vcx.addRecordWallet(recordType: "credential", recordId: threadId, recordValue: credential, tagsJson: "")
             })
             .map { _ in
                 //Release vcx objects from memory
@@ -236,13 +242,13 @@ class ViewController: UIViewController {
             }, receiveValue: { _ in })
     }
     
-    func handleCredential(connectionHandle: Int, claimOfferId: String) {
+    func handleCredential(connectionHandle: Int, threadId: String) {
         print("Handle a credential message")
         
         let vcx = VcxWrapper()
         var credentialHandle = Int()
 
-        self.cancellable = vcx.getRecordWallet(recordType: "credential", recordId: claimOfferId)
+        self.cancellable = vcx.getRecordWallet(recordType: "credential", recordId: threadId, optionsJson: "")
             .map { credential in
                 let walletRecord = try! JSON(data: credential.data(using: .utf8)!)
                 let serializedCredential = walletRecord["value"].stringValue
@@ -276,7 +282,7 @@ class ViewController: UIViewController {
             }, receiveValue: { _ in })
     }
 
-    func handlePresentationRequest(connectionHandle: Int, threadId: String) {
+    func handlePresentationRequest(connectionHandle: Int, threadId: String, stateUpdateMsg: String) {
         print("Handle a presentation request")
         
         let vcx = VcxWrapper()
@@ -297,6 +303,10 @@ class ViewController: UIViewController {
             .map { handle in
                 proofHandle = handle
             }
+            .flatMap({
+                //Update a state in the agency
+                vcx.updateMessages(messageStatus: "MS-106", magJson: stateUpdateMsg)
+            })
             .flatMap({ _ in
                 //Query for credentials in the wallet that satisfy the proof request
                 vcx.proofRetrieveCredentials(proofHandle: proofHandle)
@@ -326,7 +336,7 @@ class ViewController: UIViewController {
                 vcx.proofSerialize(proofHandle: proofHandle)
             })
             .flatMap({ proof in
-                vcx.addRecordWallet(recordType: "proof", recordId: threadId, recordValue: proof)
+                vcx.addRecordWallet(recordType: "proof", recordId: threadId, recordValue: proof, tagsJson: "")
             })
             .map { _ in
                 //Release vcx objects from memory
@@ -347,7 +357,7 @@ class ViewController: UIViewController {
         let vcx = VcxWrapper()
         var proofHandle = Int()
         
-        self.cancellable = vcx.getRecordWallet(recordType: "proof", recordId: threadId)
+        self.cancellable = vcx.getRecordWallet(recordType: "proof", recordId: threadId, optionsJson: "")
         .map { proof in
             let walletRecord = try! JSON(data: proof.data(using: .utf8)!)
             
