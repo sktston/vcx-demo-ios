@@ -12,6 +12,7 @@ import SwiftyJSON
 
 class ViewController: UIViewController {
     var cancellable: AnyCancellable?
+    var did = ""
 
     @IBOutlet var txtInvitation: UITextField!
     
@@ -93,8 +94,11 @@ class ViewController: UIViewController {
             .flatMap({
                 vcx.connectionGetPwDid(connectionHandle: connectionHandle)
             })
-            .flatMap({ pwDid in
-                vcx.addRecordWallet(recordType: "connection", recordId: pwDid, recordValue: serializedConnection, tagsJson: "")
+            .map { pwDid in
+                self.did = pwDid
+            }
+            .flatMap({ _ in
+                vcx.addRecordWallet(recordType: "connection", recordId: self.did, recordValue: serializedConnection, tagsJson: "")
             })
             .sink(receiveCompletion: { completion in
                 switch completion {
@@ -106,11 +110,11 @@ class ViewController: UIViewController {
     
     @IBAction func btnUpdate(_ sender: UIButton) {
         let vcx = VcxWrapper()
-        var pwDid = "", uid = "", stateUpdateMsg = "", type = ""
+        var pwDid = did, uid = "", stateUpdateMsg = "", type = ""
         var jsonMessage = JSON()
         
         //doenload messages from the agency
-        self.cancellable = vcx.downloadMessages(messageStatus: "MS-103", uids: nil, pwdids: nil)
+        self.cancellable = vcx.downloadMessages(messageStatus: "MS-103", uids: nil, pwdids: pwDid)
             .map { messages in
                 print("Downloaded message: ", messages)
                 let jsonMessages = try! JSON(data: messages.data(using: .utf8)!)
