@@ -37,8 +37,17 @@ class VcxWrapper {
         }
     }
     
-    func updateWebhookUrl(webhookUrl: String) -> Int {
-        return Int(ConnectMeVcx().updateWebhookUrl(webhookUrl))
+    func updateWebhookUrl(webhookUrl: String) -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().updateWebhookUrl(webhookUrl) { error in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("updateWebhookUrl was successful!")
+                    promise(.success(""))
+                }
+            }
+        }
     }
     
     func errorCMessage(errorCode: Int) -> String {
@@ -192,9 +201,9 @@ class VcxWrapper {
         }
     }
     
-    func credentialUpdateState(credentialHandle: Int) -> Future<Int, Error> {
+    func credentialUpdateState(credentialHandle: Int, connectionHandle: Int) -> Future<Int, Error> {
         return Future { promise in
-            ConnectMeVcx().credentialUpdateState(credentialHandle) { error, state in
+            ConnectMeVcx().credentialUpdateStateV2(credentialHandle, connectionHandle: VcxHandle(truncatingIfNeeded: connectionHandle)) { error, state in
                 if error != nil && (error as NSError?)?.code != 0 {
                     promise(.failure(error!))
                 } else {
@@ -313,9 +322,9 @@ class VcxWrapper {
         }
     }
     
-    func proofUpdateState(proofHandle: Int) -> Future<Int, Error> {
+    func proofUpdateState(proofHandle: Int, connectionHandle: Int) -> Future<Int, Error> {
         return Future { promise in
-            ConnectMeVcx().proofUpdateState(proofHandle) { error, state in
+            ConnectMeVcx().proofUpdateStateV2(proofHandle, connectionHandle: vcx_connection_handle_t(connectionHandle)) { error, state in
                 if error != nil && (error as NSError?)?.code != 0 {
                     promise(.failure(error!))
                 } else {

@@ -32,8 +32,7 @@ class ViewController: UIViewController {
               "wallet_name": "alice_wallet",
               "wallet_key": "123",
               "payment_method": "null",
-              "enterprise_seed": "000000000000000000000000Trustee1",
-              "protocol_type": "4.0"
+              "enterprise_seed": "000000000000000000000000Trustee1"
             }
             """
 
@@ -110,8 +109,15 @@ class ViewController: UIViewController {
     
     @IBAction func btnUpdate(_ sender: UIButton) {
         let vcx = VcxWrapper()
+        
+        let CONNECTION_RESPONSE = "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/connections/1.0/response"
+        let CREDENTIAL_OFFER = "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/issue-credential/1.0/offer-credential"
+        let CREDENTIAL_ISSUED = "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/issue-credential/1.0/issue-credential"
+        let PRESENTATION_REQUEST = "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/present-proof/1.0/request-presentation"
+        let PRESENTATION_ACK = "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/present-proof/1.0/ack"
+        
         var pwDid = did, uid = "", stateUpdateMsg = "", type = ""
-        var jsonMessage = JSON()
+        var jsonDecryptedMsg = JSON()
         
         //doenload messages from the agency
         self.cancellable = vcx.downloadMessages(messageStatus: "MS-103", uids: nil, pwdids: pwDid)
@@ -123,13 +129,10 @@ class ViewController: UIViewController {
                 uid = jsonMessages[0]["msgs"][0]["uid"].stringValue
                 stateUpdateMsg = "[{\"pairwiseDID\":\"" + pwDid + "\",\"uids\":[\"" + uid + "\"]}]";
                 
-                let decryptedPayload = jsonMessages[0]["msgs"][0]["decryptedPayload"].stringValue
-                let jsonDecryptedPayload = try! JSON(data: decryptedPayload.data(using: .utf8)!)
+                let decryptedMsg = jsonMessages[0]["msgs"][0]["decryptedMsg"].stringValue
+                jsonDecryptedMsg = try! JSON(data: decryptedMsg.data(using: .utf8)!)
                 
-                let message = jsonDecryptedPayload["@msg"].stringValue
-                jsonMessage = try! JSON(data: message.data(using: .utf8)!)
-                
-                type = jsonDecryptedPayload["@type"]["name"].stringValue
+                type = jsonDecryptedMsg["@type"].stringValue
                 print("Message type: ", type)
             }
             .flatMap({
@@ -144,24 +147,16 @@ class ViewController: UIViewController {
             })
             .map { handle in
                 switch type {
-                    case "aries":
-                        let innerType = jsonMessage["@type"].stringValue
-                        print("Inner type: ", innerType)
-                        
-                        //connection response
-                        if innerType == "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/connections/1.0/response" {
-                            self.handleConnection(connectionHandle: handle, pwDid: pwDid)
-                        }
-                        //ack of proof request
-                        else if innerType == "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/present-proof/1.0/ack" {
-                            self.handleProofResponse(connectionHandle: handle, threadId: jsonMessage["~thread"]["thid"].stringValue)
-                        }
-                    case "credential-offer":
-                        self.handleCredentialOffer(connectionHandle: handle, threadId: jsonMessage["@id"].stringValue, stateUpdateMsg: stateUpdateMsg)
-                    case "credential":
-                        self.handleCredential(connectionHandle: handle, threadId: jsonMessage["~thread"]["thid"].stringValue)
-                    case "presentation-request":
-                        self.handlePresentationRequest(connectionHandle: handle, threadId: jsonMessage["@id"].stringValue, stateUpdateMsg: stateUpdateMsg)
+                    case CONNECTION_RESPONSE:
+                        self.handleConnection(connectionHandle: handle, pwDid: pwDid)
+                    case CREDENTIAL_OFFER:
+                        self.handleCredentialOffer(connectionHandle: handle, threadId: jsonDecryptedMsg["@id"].stringValue, stateUpdateMsg: stateUpdateMsg)
+                    case CREDENTIAL_ISSUED:
+                        self.handleCredential(connectionHandle: handle, threadId: jsonDecryptedMsg["~thread"]["thid"].stringValue)
+                    case PRESENTATION_REQUEST:
+                        self.handlePresentationRequest(connectionHandle: handle, threadId: jsonDecryptedMsg["@id"].stringValue, stateUpdateMsg: stateUpdateMsg)
+                    case PRESENTATION_ACK:
+                        self.handleProofResponse(connectionHandle: handle, threadId: jsonDecryptedMsg["~thread"]["thid"].stringValue)
                     default:
                         print("out of scope")
                 }
@@ -257,12 +252,7 @@ class ViewController: UIViewController {
                 let walletRecord = try! JSON(data: credential.data(using: .utf8)!)
                 let serializedCredential = walletRecord["value"].stringValue
                 
-                //It replaces a connection handle in the credential object with a currently available one.
-                //There should be a better way to handle this issue.
-                var jsonSerializedCredential = try! JSON(data: serializedCredential.data(using: .utf8)!)
-                jsonSerializedCredential["data"]["holder_sm"]["state"]["RequestSent"]["connection_handle"].int = connectionHandle
-                
-                return jsonSerializedCredential.rawString()!
+                return serializedCredential
             }
             .flatMap({ credential in
                 vcx.credentialDeserialize(serializedCredential: credential)
@@ -271,7 +261,7 @@ class ViewController: UIViewController {
                 credentialHandle = handle
             }
             .flatMap({
-                vcx.credentialUpdateState(credentialHandle: credentialHandle)
+                vcx.credentialUpdateState(credentialHandle: credentialHandle, connectionHandle: connectionHandle)
             })
             .map { _ in
                 //Release vcx objects from memory
@@ -367,12 +357,7 @@ class ViewController: UIViewController {
             
             let serializedProof = walletRecord["value"].stringValue
             
-            //It replaces a connection handle in the proof object with a currently available one.
-            //There should be a better way to handle this issue.
-            var jsonSerializedProof = try! JSON(data: serializedProof.data(using: .utf8)!)
-            jsonSerializedProof["data"]["prover_sm"]["state"]["PresentationSent"]["connection_handle"].int = connectionHandle
-            
-            return jsonSerializedProof.rawString()!
+            return serializedProof
         }
         .flatMap({ proof in
             vcx.proofDeserialize(serializedProof: proof)
@@ -381,7 +366,7 @@ class ViewController: UIViewController {
             proofHandle = handle
         }
         .flatMap({
-            vcx.proofUpdateState(proofHandle: proofHandle)
+            vcx.proofUpdateState(proofHandle: proofHandle, connectionHandle: connectionHandle)
         })
         .map { _ in
             //Release vcx objects from memory
