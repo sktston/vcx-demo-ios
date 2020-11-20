@@ -32,8 +32,7 @@ class ViewController: UIViewController {
               "wallet_name": "alice_wallet",
               "wallet_key": "123",
               "payment_method": "null",
-              "enterprise_seed": "000000000000000000000000Trustee1",
-              "protocol_type": "4.0"
+              "enterprise_seed": "000000000000000000000000Trustee1"
             }
             """
 
@@ -142,7 +141,7 @@ class ViewController: UIViewController {
             }
             .flatMap({
                 //Accept credential offer from faber
-                vcx.credentialUpdateState(credentialHandle: credentialHandle)
+                vcx.credentialUpdateState(credentialHandle: credentialHandle, connectionHandle: connectionHandle)
             })
             .map { _ in
                 //Release vcx objects from memory
@@ -214,7 +213,7 @@ class ViewController: UIViewController {
         }
         .flatMap({
             //Get an ack from faber and finalize the proof process
-            vcx.proofUpdateState(proofHandle: proofHandle)
+            vcx.proofUpdateState(proofHandle: proofHandle, connectionHandle: connectionHandle)
         })
         .map { _ in
             //Release vcx objects from memory

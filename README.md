@@ -13,15 +13,10 @@ Run `pod install` from the root folder of the project. It's getting the Vcx fram
 
 **Note**: This project adopts the [Combine framework](https://developer.apple.com/documentation/combine) in order to migrate existing Objective-C async callbacks to Future/Promise style architecture. This is implemented in the file [VcxWrapper.swift](https://github.com/sktston/vcx-skeleton-ios/blob/master/VcxDemo/VcxWrapper.swift), and they are used with a `flatMap` for sequencing asynchronouse operations in this demo application.
 
-**Note**: The prebuilt vcx.framework is built/hosted by [SK Telecom](https://www.sktelecom.com/index_en.html), and it contains some open PRs which introduce new APIs and bug fixes on top of the current [master branch](https://github.com/hyperledger/indy-sdk/tree/cd66e2ce69f29bfc19754ec2f66bae36f4293fb2) of [indy-sdk](https://github.com/hyperledger/indy-sdk)
-
-- [#2195](https://github.com/hyperledger/indy-sdk/pull/2195): LibVCX iOS wrapper updates 
-- [#2209](https://github.com/hyperledger/indy-sdk/pull/2209): VCX Wallet APIs 
-
 ## Steps to run Demo
 
 #### Cloud Agent
-You need to start [NodeVCXAgency](https://github.com/AbsaOSS/vcxagencynode) or [Dummy Cloud Agent](https://github.com/hyperledger/indy-sdk/tree/master/vcx/dummy-cloud-agent) in the remote host with a specific IP address rather than localhost
+You need to start [NodeVCXAgency](https://github.com/AbsaOSS/vcxagencynode) in the remote host with a specific IP address rather than localhost
 
 Update the `agncy_url` field in the [ViewController.swift](https://github.com/sktston/vcx-demo-ios/blob/master/VcxDemo/ViewController.swift) file with your cloud agent's url
 
