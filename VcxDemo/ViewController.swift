@@ -52,12 +52,17 @@ class ViewController: UIViewController {
 
                 jsonConfigStr = jsonConfig.rawString()!
                 print("Updated json: ", jsonConfigStr)
-
-                return jsonConfigStr
-            }
-            .flatMap({ config in
+                
                 //Initialize libvcx with a new configuration
-                vcx.initWithConfig(config: config)
+                _ = vcx.vcxInitCore(config: jsonConfigStr)
+            }
+            .flatMap({
+                //open pool
+                vcx.vcxOpenPool()
+            })
+            .flatMap({ _ in
+                //open wallet
+                vcx.vcxOpenWallet()
             })
             .sink(receiveCompletion: { completion in
                 switch completion {
