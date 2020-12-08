@@ -24,13 +24,30 @@ class VcxWrapper {
         }
     }
     
-    func initWithConfig(config: String) -> Future<String, Error> {
+    func vcxInitCore(config: String) -> Int {
+        return Int(ConnectMeVcx().vcxInitCore(config))
+    }
+    
+    func vcxOpenWallet() -> Future<String, Error> {
         return Future { promise in
-            ConnectMeVcx().initWithConfig(config) { error in
+            ConnectMeVcx().vcxOpenWallet() { error in
                 if error != nil && (error as NSError?)?.code != 0 {
                     promise(.failure(error!))
                 } else {
-                    print("init was successful!")
+                    print("vcxOpenWallet was successful!")
+                    promise(.success(""))
+                }
+            }
+        }
+    }
+    
+    func vcxOpenPool() -> Future<String, Error> {
+        return Future { promise in
+            ConnectMeVcx().vcxOpenPool() { error in
+                if error != nil && (error as NSError?)?.code != 0 {
+                    promise(.failure(error!))
+                } else {
+                    print("vcxOpenPool was successful!")
                     promise(.success(""))
                 }
             }
